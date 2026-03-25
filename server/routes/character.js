@@ -38,9 +38,32 @@ router.get("/:id", authMiddleware, async (req, res) => {
   }
 });
 
+const Chat = require("../models/Chat");
+const Message = require("../models/Message");
+const Memory = require("../models/Memory");
+const Relationship = require("../models/Relationship");
+
 router.delete("/:id", authMiddleware, async (req, res) => {
-  await Character.deleteOne({ _id: req.params.id, userId: req.userId });
-  res.json({ message: "Character deleted" });
+  try {
+    const characterId = req.params.id;
+    const userId = req.userId;
+
+    await Character.deleteOne({ _id: characterId, userId });
+
+    const chats = await Chat.find({ characterId, userId });
+    const chatIds = chats.map(chat => chat._id);
+
+    await Chat.deleteMany({ characterId, userId });
+    await Message.deleteMany({ chatId: { $in: chatIds } });
+
+    await Memory.deleteMany({ characterId, userId });
+
+    await Relationship.deleteMany({ characterId, userId });
+
+    res.json({ message: "Character and all related data deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

@@ -1,24 +1,19 @@
+import './RelationshipBar.css';
+
 function RelationshipBar({ label, value }) {
+  const clamp = (val) => Math.max(0, Math.min(100, val));
+  const clampedValue = clamp(value);
+  const colorClass = label.toLowerCase();
+
   return (
-    <div style={{ marginBottom: "10px" }}>
-      <div style={{ fontSize: "0.85rem", fontWeight: "600", color: "#ccc", marginBottom: "4px" }}>
+    <div className="bar-item">
+      <div className="bar-label">
         {label}
       </div>
-      <div
-        style={{
-          background: "#333",
-          height: "8px",
-          borderRadius: "5px",
-        }}
-      >
-        <div
-          style={{
-            width: `${value}%`,
-            background: "#2b8cff",
-            height: "8px",
-            borderRadius: "5px",
-            transition: "width 0.5s ease"
-          }}
+      <div className="meter">
+        <div 
+          className={`meter-fill ${colorClass}`} 
+          style={{ width: `${clampedValue}%` }}
         ></div>
       </div>
     </div>

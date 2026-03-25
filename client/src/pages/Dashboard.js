@@ -20,6 +20,21 @@ function Dashboard() {
     }
   };
 
+  const handleDelete = async (charId, charName) => {
+    const confirmDelete = window.confirm(`Are you sure you want to delete ${charName}? This will permanently remove all chats, memories, and relationship data.`);
+    
+    if (!confirmDelete) return;
+
+    try {
+      await API.delete(`/character/${charId}`);
+      alert("Character deleted successfully.");
+      fetchCharacters();
+    } catch (err) {
+      console.error("Error deleting character:", err);
+      alert("Failed to delete character.");
+    }
+  };
+
   return (
     <div className="dashboard">
       <div className="dashboard-header">
@@ -44,9 +59,14 @@ function Dashboard() {
                 <h3>{char.name}</h3>
                 <p className="personality-tag">{char.personality}</p>
                 <p className="description-text">{char.description || "No description provided."}</p>
-                <button className="btn-chat" onClick={() => navigate(`/chat/${char._id}`)}>
-                  Open Chat
-                </button>
+                <div className="card-actions">
+                  <button className="btn-chat" onClick={() => navigate(`/chat/${char._id}`)}>
+                    Open Chat
+                  </button>
+                  <button className="btn-delete" onClick={() => handleDelete(char._id, char.name)}>
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           ))

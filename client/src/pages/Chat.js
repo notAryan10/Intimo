@@ -9,6 +9,7 @@ function Chat() {
   const { id } = useParams();
   const [character, setCharacter] = useState(null);
   const [relationship, setRelationship] = useState({ affection: 0, trust: 0, intimacy: 0, anger: 0 });
+  const [relationshipLevel, setRelationshipLevel] = useState({ level: "Stranger", emoji: "👋" });
   const [chatId, setChatId] = useState("");
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
@@ -18,24 +19,26 @@ function Chat() {
 
   const fetchChatData = useCallback(async () => {
     try {
-      const chatRes = await API.post("/chat/create", {
-        characterId: id,
-        mode: "romantic",
-      });
-      const currentChatId = chatRes.data._id;
-      setChatId(currentChatId);
-
-      const charRes = await API.get(`/character/${id}`);
+      const charId = id;
+      
+      const charRes = await API.get(`/character/${charId}`);
       setCharacter(charRes.data);
 
-      const msgRes = await API.get(`/chat/${currentChatId}`);
-      if (msgRes.data.length > 0) {
-        setMessages(msgRes.data);
-      } else {
-        setMessages([{ sender: "ai", text: `Hey there! I'm ${charRes.data.name}. I'm so glad we get to chat.` }]);
-      }
+      const chatRes = await API.post("/chat/create", {
+        characterId: charId,
+        mode: "romantic",
+      });
+      
+      const { chat, messages: history, relationship: relData, level, emoji } = chatRes.data;
+      
+      setChatId(chat._id);
+      setMessages(history || []);
 
-      if (chatRes.data.relationshipId) {
+      if (relData) {
+        setRelationship(relData);
+      }
+      if (level) {
+        setRelationshipLevel({ level, emoji });
       }
 
       setLoading(false);
@@ -95,6 +98,9 @@ function Chat() {
       if (res.data.relationship) {
         setRelationship(res.data.relationship);
       }
+      if (res.data.level) {
+        setRelationshipLevel({ level: res.data.level, emoji: res.data.emoji });
+      }
       if (res.data.emotion) {
         setCharacter(prev => ({ ...prev, emotion: res.data.emotion }));
       }
@@ -119,6 +125,11 @@ function Chat() {
             </div>
           </div>
         )}
+        <div className="relationship-status-header" style={{ textAlign: 'center', marginBottom: '15px' }}>
+          <h3 style={{ color: '#fff', fontSize: '1.1rem' }}>
+            Relationship: {relationshipLevel.level} {relationshipLevel.emoji}
+          </h3>
+        </div>
         <div className="relationship-stats">
           <RelationshipBar label="Affection" value={relationship.affection} />
           <RelationshipBar label="Trust" value={relationship.trust} />
@@ -136,6 +147,7 @@ function Chat() {
           onRegenerate={() => sendMessage(true)}
           typing={typing}
           chatEndRef={chatEndRef}
+          characterName={character?.name}
         />
       </div>
     </div>

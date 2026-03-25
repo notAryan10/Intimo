@@ -11,6 +11,14 @@ const ChatSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  lastSeen: {
+    type: Date,
+    default: Date.now
+  },
+  greetingGenerated: {
+    type: Boolean,
+    default: false
   }
 });
 

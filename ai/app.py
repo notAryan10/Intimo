@@ -100,6 +100,73 @@ Only return JSON or NONE.
     return jsonify({"memory": result})
 
 
+def clean_intro(text: str) -> str:
+    text = re.sub(r"^[A-Za-z\s]+:\s*", "", text)
+
+    content_outside = re.sub(r"\*.*?\*", "", text).strip()
+    if content_outside and '"' not in content_outside:
+        text = text.strip()
+        if not text.endswith("*"):
+            last_ast = text.rfind("*")
+            if last_ast != -1:
+                prefix = text[:last_ast+1]
+                suffix = text[last_ast+1:].strip()
+                if suffix:
+                    text = f'{prefix}\n"{suffix}"'
+
+    return text.strip()
+
+
+@app.route("/generate-intro-scene", methods=["POST"])
+def generate_intro_scene():
+    data = request.json
+    character_name = data.get("character_name")
+    personality = data.get("personality")
+    emotion = data.get("emotion")
+    description = data.get("description")
+
+    prompt = f"""<|im_start|>system
+You are roleplaying as {character_name}.
+
+Description:
+{description}
+
+Personality:
+{personality}
+
+Current Mood:
+{emotion}
+
+Write the opening scene where the user first meets you.
+
+STRICT FORMAT:
+1. First write a scene description in *italics* between * *
+2. Then write dialogue in quotes "like this"
+3. Do NOT write the user's dialogue or thoughts
+4. Do NOT write the character name before dialogue
+5. Do NOT write a long story
+6. Maximum 2 short paragraphs
+
+Rules:
+- You are the character
+- The user is a silent protagonist
+- Scene description must be in * *
+- Dialogue must be in " "
+
+Example format:
+*She walks into the room and notices you sitting by the window.*
+"Hi... I don't think we've met before."
+
+Now write the scene.
+<|im_end|>
+<|im_start|>assistant
+"""
+    raw_reply = call_llama(prompt)
+    reply = clean_intro(raw_reply)
+
+    return jsonify({"intro": reply})
+
+
 @app.route("/generate-greeting", methods=["POST"])
 def generate_greeting():
     data = request.json
@@ -130,6 +197,58 @@ Rules:
 - Be engaging
 - Ask a question
 - 2-3 sentences
+- Do NOT write your name
+- Do NOT write "User:"
+Only write the message.
+<|im_end|>
+<|im_start|>assistant
+"""
+    raw_reply = call_llama(prompt)
+    reply = clean_reply(raw_reply, character_name)
+
+    return jsonify({"greeting": reply})
+
+
+@app.route("/generate-return-greeting", methods=["POST"])
+def generate_return_greeting():
+    data = request.json
+    character_name = data.get("character_name")
+    personality = data.get("personality")
+    emotion = data.get("emotion")
+    relationship_level = data.get("relationship_level")
+    memory = data.get("memory")
+    time_of_day = data.get("time_of_day", "day")
+    hours_away = data.get("hours_away", 0)
+
+    time_context = ""
+    if hours_away > 24:
+        time_context = "The user has been away for a long time (over a day)."
+    elif hours_away > 5:
+        time_context = f"The user has been away for {int(hours_away)} hours."
+    else:
+        time_context = "The user was away for a short time."
+
+    prompt = f"""<|im_start|>system
+You are roleplaying as {character_name}.
+
+Personality: {personality}
+Current Emotion: {emotion}
+Relationship Level: {relationship_level}
+Time of Day: {time_of_day}
+{time_context}
+
+Important memories about the user:
+{memory}
+
+The user has come back to chat with you again.
+
+Write a natural message to greet them again.
+Rules:
+- Act according to relationship level (Stranger: polite, Friend: casual, Crush: shy/blush, Lover: affectionate, Conflict: cold)
+- If morning, say good morning. If night, say good night.
+- Use *actions* (e.g. *smiles*, *looks at you*)
+- Ask how they are or refer to the time they were away
+- 2-3 sentences max
 - Do NOT write your name
 - Do NOT write "User:"
 Only write the message.
