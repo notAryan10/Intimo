@@ -5,6 +5,7 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
 const characterRoutes = require("./routes/character");
+const chatRoutes = require("./routes/chat");
 
 const app = express();
 
@@ -13,10 +14,7 @@ app.use(express.json());
 
 app.use("/auth", authRoutes);
 app.use("/character", characterRoutes);
-
-app.get("/", (req, res) => {
-  res.send("Intimo API is running...");
-});
+app.use("/chat", chatRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
