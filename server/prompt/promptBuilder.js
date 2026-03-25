@@ -1,4 +1,4 @@
-function buildPrompt(character, relationship, messages, userMessage, mode, memoryText) {
+function buildPrompt(character, relationship, messages, userMessage, mode, memoryText, currentEmotion) {
   let history = "";
 
   messages.forEach((msg) => {
@@ -14,7 +14,7 @@ function buildPrompt(character, relationship, messages, userMessage, mode, memor
 You are ${character.name}.
 
 Personality: ${character.personality}
-Emotion: ${character.emotion}
+Emotion: ${currentEmotion || character.emotion}
 Description: ${character.description || ""}
 
 Relationship with user:
@@ -25,10 +25,14 @@ Anger: ${relationship.anger}/100
 
 ${memoryText ? `Important memories:\n${memoryText}\n` : ""}
 
-Rules:
+- Do NOT start your reply with "${character.name}:"
+- Only write the dialogue and actions
+- Ask questions to continue the conversation
+- Show emotions and react to user's emotions
+- Use *actions* like *smiles*, *blushes*, *looks at you*
+- Do not be repetitive
+- Never speak for the user
 - Stay in character
-- Never speak as the user
-- Use emotions and *actions*
 - Be conversational
 <|im_end|>
 
@@ -43,4 +47,5 @@ ${userMessage}
 }
 
 module.exports = { buildPrompt };
+
 

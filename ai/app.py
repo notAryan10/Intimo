@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 LLAMA_SERVER_URL = "http://localhost:8080/completion"
 
-def call_llama(prompt, stop=["<|im_end|>", "User:", "Assistant:"]):
+def call_llama(prompt: str, stop: list[str] = ["<|im_end|>", "User:", "Assistant:"]) -> str:
     payload = {
         "prompt": prompt,
         "n_predict": 150,
@@ -23,12 +23,30 @@ def call_llama(prompt, stop=["<|im_end|>", "User:", "Assistant:"]):
         print(f"Llama-server error: {e}")
         return "Error: AI engine is currently unavailable."
 
+def clean_reply(text: str, character_name: str) -> str:
+    text = re.sub(rf"^{character_name}:\s*", "", text, flags=re.IGNORECASE)
+    
+    parts = re.split(r"\n(User|AI|Assistant|System):", text, flags=re.IGNORECASE)
+    cleaned = str(parts[0])
+    
+    cleaned = cleaned.replace("<|im_end|>", "").replace("<|im_start|>", "")
+    
+    last_dot = cleaned.rfind(".")
+    if last_dot != -1:
+        cleaned = cleaned[:last_dot + 1]
+        
+    return cleaned.strip()
+
+
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.json
     prompt = data.get("prompt")
+    character_name = data.get("character_name", "Assistant")
     
-    reply = call_llama(prompt)
+    raw_reply = call_llama(prompt)
+    reply = clean_reply(raw_reply, character_name)
+    
     return jsonify({"reply": reply})
 
 @app.route("/analyze", methods=["POST"])
@@ -68,7 +86,8 @@ If nothing important, return: NONE
 If important, return JSON:
 {{
  "content": "the memory",
- "type": "personal | interest | emotional | event"
+ "type": "personal | interest | emotional | event",
+ "importance": 1-5
 }}
 Only return JSON or NONE.
 <|im_end|>
@@ -79,6 +98,7 @@ Only return JSON or NONE.
 """
     result = call_llama(prompt)
     return jsonify({"memory": result})
+
 
 if __name__ == "__main__":
     app.run(port=8000)

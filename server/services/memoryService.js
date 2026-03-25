@@ -17,6 +17,7 @@ async function extractAndStoreMemory(userId, characterId, message) {
         characterId,
         content: memory.content,
         type: memory.type,
+        importance: memory.importance || 1,
       });
     }
   } catch (err) {

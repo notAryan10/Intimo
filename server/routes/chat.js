@@ -61,10 +61,30 @@ router.post("/message", authMiddleware, async (req, res) => {
       await character.save();
     }
   }
-
-  const dynamicEmotion = updateEmotion(relationship);
-  character.emotion = dynamicEmotion;
+   // Update dynamic emotion
+  const currentEmotion = updateEmotion(relationship);
+  character.emotion = currentEmotion;
   await character.save();
+
+  // Relationship Events
+  let specialEvent = null;
+  const events = relationship.eventTriggered || new Map();
+
+  if (relationship.intimacy > 80 && !events.get("confession")) {
+    specialEvent = "confession";
+    events.set("confession", true);
+  } else if (relationship.affection > 60 && !events.get("likes_you")) {
+    specialEvent = "likes_you";
+    events.set("likes_you", true);
+  } else if (relationship.anger > 60 && !events.get("fight")) {
+    specialEvent = "fight";
+    events.set("fight", true);
+  }
+
+  if (specialEvent) {
+    relationship.eventTriggered = events;
+    await relationship.save();
+  }
 
   await Message.create({
     chatId,
@@ -74,30 +94,17 @@ router.post("/message", authMiddleware, async (req, res) => {
 
   await extractAndStoreMemory(req.userId, character._id, message);
 
-  const allMemories = await Memory.find({
+  // Enhanced Memory selection by Importance
+  const memories = await Memory.find({
     userId: req.userId,
     characterId: character._id,
-  }).sort({ createdAt: -1 }).limit(20);
-
-  const keywords = message.toLowerCase().split(/\W+/).filter(w => w.length > 3);
-  const relevantMemories = allMemories.filter(mem => 
-    keywords.some(kw => mem.content.toLowerCase().includes(kw))
-  );
-  const types = ["personal", "interest", "emotional", "event"];
-  const selectedMemories = [];
-  
-  selectedMemories.push(...relevantMemories.slice(0, 3));
-  
-  types.forEach(type => {
-    if (selectedMemories.length < 6) {
-      const typeMem = allMemories.find(m => m.type === type && !selectedMemories.includes(m));
-      if (typeMem) selectedMemories.push(typeMem);
-    }
-  });
+  })
+  .sort({ importance: -1, createdAt: -1 })
+  .limit(5);
 
   let memoryText = "";
-  selectedMemories.forEach(mem => {
-    memoryText += `- ${mem.content} (${mem.type})\n`;
+  memories.forEach(mem => {
+    memoryText += `- ${mem.content} (Importance: ${mem.importance})\n`;
   });
 
   const messages = await getLastMessages(chatId);
@@ -108,7 +115,8 @@ router.post("/message", authMiddleware, async (req, res) => {
     messages,
     message,
     chat.chatMode,
-    memoryText
+    memoryText,
+    currentEmotion
   );
 
   console.log("------ PROMPT START ------");
@@ -124,7 +132,7 @@ router.post("/message", authMiddleware, async (req, res) => {
     text: aiReply,
   });
 
-  res.json({ 
+  res.json({
     reply: aiReply,
     relationship: {
       affection: relationship.affection,
@@ -132,7 +140,8 @@ router.post("/message", authMiddleware, async (req, res) => {
       intimacy: relationship.intimacy,
       anger: relationship.anger
     },
-    emotion: character.emotion
+    emotion: currentEmotion,
+    event: specialEvent
   });
 });
 

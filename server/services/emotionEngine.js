@@ -1,13 +1,16 @@
 function updateEmotion(relationship) {
-  if (relationship.anger > 60) return "angry";
-  if (relationship.intimacy > 70) return "romantic";
-  if (relationship.trust > 70) return "open";
-  if (relationship.affection > 70) return "caring";
-  if (relationship.affection > 50 && relationship.intimacy > 50) return "loving";
-  if (relationship.anger > 30) return "annoyed";
-  if (relationship.affection < 20) return "distant";
+  const { affection, trust, intimacy, anger } = relationship;
+
+  if (anger > 70) return "angry";
+  if (anger > 40) return "upset";
+  if (intimacy > 70 && affection > 70) return "deeply in love";
+  if (intimacy > 50) return "romantic";
+  if (affection > 60) return "caring";
+  if (trust > 60) return "comfortable";
+  if (affection < 20 && trust < 20) return "cold";
   
   return "neutral";
 }
 
 module.exports = { updateEmotion };
+
