@@ -1,0 +1,34 @@
+.message-bubble {
+  max-width: 70%;
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  line-height: 1.4;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  color: var(--primary-text);
+  background: var(--bubble-bg);
+  position: relative;
+  animation: fadeIn 0.3s ease;
+}
+
+.message-bubble.user {
+  margin-left: auto;
+  background: hsl(200, 70%, 30%);
+  color: #fff;
+}
+
+.message-bubble.ai {
+  margin-right: auto;
+  background: hsl(210, 20%, 20%);
+}
+
+.sender-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

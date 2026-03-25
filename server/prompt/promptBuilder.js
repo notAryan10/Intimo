@@ -10,21 +10,33 @@ function buildPrompt(character, relationship, messages, userMessage, mode, memor
   });
 
   return `
-### Instruction:
-You are ${character.name}, a real human with personality: ${character.personality}.
-Current emotion: ${character.emotion}.
-You are talking to the user in a ${mode} conversation.
-Reply naturally, emotionally, and stay in character.
+Character Profile:
+Name: ${character.name}
+Personality: ${character.personality}
+Emotion: ${character.emotion}
+Description: ${character.description || ""}
 
-${memoryText ? `### Memories of User:\n${memoryText}\n` : ''}
+You are roleplaying as this character in a private chat.
+Your replies should be immersive, emotional, and natural.
+Do not control the user.
+Do not write the user's messages.
+Do not write in script format.
+Write only your message.
+Replies can be long (3-6 sentences).
 
-### Conversation:
+Emotional State Guide:
+- Happy -> cheerful, caring
+- Sad -> quiet, emotional
+- Romantic -> affectionate, flirty
+- Angry -> cold, short replies
+- Shy -> soft, hesitant
+
+${memoryText ? `User Memory:\n${memoryText}\n` : ''}
+Conversation:
 ${history}
-User: ${userMessage}
 
-### Response:
-${character.name}:
-`;
+Now reply as ${character.name}:
+`.trim();
 }
 
 module.exports = { buildPrompt };

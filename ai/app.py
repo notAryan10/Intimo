@@ -6,22 +6,25 @@ app = Flask(__name__)
 chatbot = pipeline(
     "text-generation",
     model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    max_new_tokens=120,
-    temperature=0.9,
-    do_sample=True
+    max_new_tokens=200,
+    temperature=0.85,
+    top_p=0.92,
+    do_sample=True,
+    repetition_penalty=1.12
 )
 
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.json
     prompt = data.get("prompt")
+    character_name = data.get("character_name", "AI")
 
     result = chatbot(prompt)[0]["generated_text"]
 
-    reply = result[len(prompt):].strip()
+    reply = result.split(f"Now reply as {character_name}:")[-1].strip()
 
-    if "User:" in reply:
-        reply = reply.split("User:")[0].strip()
+    reply = reply.split("User:")[0].strip()
+    reply = reply.split("\nUser")[0].strip()
 
     return jsonify({"reply": reply})
 

@@ -1,0 +1,145 @@
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useParams } from "react-router-dom";
+import API from "../services/api";
+import ChatBox from "../components/ChatBox";
+import RelationshipBar from "../components/RelationshipBar";
+import "./Chat.css";
+
+function Chat() {
+  const { id } = useParams();
+  const [character, setCharacter] = useState(null);
+  const [relationship, setRelationship] = useState({ affection: 0, trust: 0, intimacy: 0, anger: 0 });
+  const [chatId, setChatId] = useState("");
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [typing, setTyping] = useState(false);
+  const chatEndRef = useRef(null);
+
+  const fetchChatData = useCallback(async () => {
+    try {
+      const chatRes = await API.post("/chat/create", {
+        characterId: id,
+        mode: "romantic",
+      });
+      const currentChatId = chatRes.data._id;
+      setChatId(currentChatId);
+
+      const charRes = await API.get(`/character/${id}`);
+      setCharacter(charRes.data);
+
+      const msgRes = await API.get(`/chat/${currentChatId}`);
+      if (msgRes.data.length > 0) {
+        setMessages(msgRes.data);
+      } else {
+        setMessages([{ sender: "ai", text: `Hey there! I'm ${charRes.data.name}. I'm so glad we get to chat.` }]);
+      }
+
+      if (chatRes.data.relationshipId) {
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error("Error loading chat data:", err);
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchChatData();
+  }, [fetchChatData]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, typing]);
+
+  const sendMessage = async (isRegenerate = false) => {
+    const textToSend = isRegenerate 
+      ? messages.filter(m => m.sender === "user").slice(-1)[0]?.text 
+      : message;
+
+    if (!textToSend?.trim()) return;
+
+    try {
+      if (!isRegenerate) {
+        const tempUserMsg = { sender: "user", text: textToSend };
+        setMessages((prev) => [...prev, tempUserMsg]);
+        setMessage("");
+      }
+
+      setTyping(true);
+
+      const res = await API.post("/chat/message", {
+        chatId,
+        message: textToSend,
+      });
+
+      setTyping(false);
+
+      if (isRegenerate) {
+        setMessages((prev) => {
+          const newMsgs = [...prev];
+          if (newMsgs[newMsgs.length - 1].sender === "ai") {
+            newMsgs[newMsgs.length - 1].text = res.data.reply;
+          } else {
+            newMsgs.push({ sender: "ai", text: res.data.reply });
+          }
+          return newMsgs;
+        });
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { sender: "ai", text: res.data.reply },
+        ]);
+      }
+      if (res.data.relationship) {
+        setRelationship(res.data.relationship);
+      }
+      if (res.data.emotion) {
+        setCharacter(prev => ({ ...prev, emotion: res.data.emotion }));
+      }
+    } catch (err) {
+      setTyping(false);
+      console.error("AI Error:", err);
+    }
+  };
+
+  if (loading) return <div className="loading">Initializing connection...</div>;
+
+  return (
+    <div className="chat-page">
+      <div className="chat-sidebar">
+        {character && (
+          <div className="character-info">
+            <div className="sidebar-avatar">{character.name.charAt(0)}</div>
+            <h2>{character.name}</h2>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+              <p className="personality-badge">{character.personality}</p>
+              {character.emotion && <p className="personality-badge mood" style={{backgroundColor: 'var(--tertiary-bg)'}}>Mood: {character.emotion}</p>}
+            </div>
+          </div>
+        )}
+        <div className="relationship-stats">
+          <RelationshipBar label="Affection" value={relationship.affection} />
+          <RelationshipBar label="Trust" value={relationship.trust} />
+          <RelationshipBar label="Intimacy" value={relationship.intimacy} />
+          <RelationshipBar label="Anger" value={relationship.anger} />
+        </div>
+      </div>
+
+      <div className="chat-main">
+        <ChatBox
+          messages={messages}
+          message={message}
+          setMessage={setMessage}
+          onSend={() => sendMessage(false)}
+          onRegenerate={() => sendMessage(true)}
+          typing={typing}
+          chatEndRef={chatEndRef}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default Chat;

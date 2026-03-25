@@ -1,12 +1,12 @@
 const axios = require("axios");
 
-async function getAIResponse(prompt) {
+async function getAIResponse(prompt, characterName = "") {
   try {
     console.log("Sending request to Python AI...");
 
     const response = await axios.post(
       "http://127.0.0.1:8000/generate",
-      { prompt: prompt },
+      { prompt: prompt, character_name: characterName },
       {
         timeout: 120000, 
         headers: { "Content-Type": "application/json" },

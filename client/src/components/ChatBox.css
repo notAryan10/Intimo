@@ -1,0 +1,85 @@
+.chatbox-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--primary-bg);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ── Messages Area ─────────────────────────── */
+.chatbox-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Input Section (input row + regen) ─────── */
+.chatbox-input-section {
+  flex-shrink: 0;
+  border-top: 1px solid #2a2a2a;
+  background: var(--primary-bg);
+}
+
+.chatbox-input {
+  display: flex;
+  padding: 0.6rem 0.8rem;
+  gap: 8px;
+}
+
+.chatbox-input input {
+  flex: 1;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid #333;
+  border-radius: 20px;
+  background: #1e1e1e;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chatbox-input input:focus {
+  border-color: var(--accent);
+}
+
+.chatbox-input button {
+  padding: 0.55rem 1.2rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.chatbox-input button:hover {
+  background: hsl(200, 80%, 45%);
+}
+
+/* ── Regenerate ────────────────────────────── */
+.regen-area {
+  padding: 0 0.8rem 0.6rem;
+}
+
+.btn-regenerate {
+  background: transparent;
+  border: 1px solid #444;
+  color: #aaa;
+  padding: 0.35rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.btn-regenerate:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

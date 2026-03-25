@@ -1,13 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --primary-bg: hsl(210, 20%, 10%);
+  --secondary-bg: hsl(210, 20%, 15%);
+  --tertiary-bg: hsl(210, 20%, 20%);
+  --primary-text: hsl(0, 0%, 95%);
+  --secondary-text: hsl(0, 0%, 75%);
+  --accent: hsl(200, 80%, 55%);
+  --accent-soft: hsla(200, 80%, 55%, 0.1);
+  --error: hsl(0, 80%, 60%);
+  --success: hsl(150, 80%, 50%);
+  --border: hsl(210, 20%, 25%);
+  --bubble-bg: hsl(210, 20%, 20%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--primary-bg);
+  color: var(--primary-text);
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: var(--primary-text);
+  margin-top: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+button {
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+input {
+  font-family: 'Inter', sans-serif;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--secondary-bg);
+  color: var(--primary-text);
+  padding: 0.75rem;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }

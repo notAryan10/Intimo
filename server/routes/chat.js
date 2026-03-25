@@ -48,12 +48,17 @@ router.post("/message", authMiddleware, async (req, res) => {
   const analysis = await analyzeMessage(message);
 
   if (analysis) {
-    relationship.affection += analysis.affection;
-    relationship.trust += analysis.trust;
-    relationship.intimacy += analysis.intimacy;
-    relationship.anger += analysis.anger;
+    if (analysis.affection !== undefined) relationship.affection += analysis.affection;
+    if (analysis.trust !== undefined) relationship.trust += analysis.trust;
+    if (analysis.intimacy !== undefined) relationship.intimacy += analysis.intimacy;
+    if (analysis.anger !== undefined) relationship.anger += analysis.anger;
 
     await relationship.save();
+
+    if (analysis.emotion) {
+      character.emotion = analysis.emotion;
+      await character.save();
+    }
   }
 
   await Message.create({
@@ -90,7 +95,7 @@ router.post("/message", authMiddleware, async (req, res) => {
   console.log("------ PROMPT END ------");
   console.log("Calling AI...");
 
-  const aiReply = await getAIResponse(prompt);
+  const aiReply = await getAIResponse(prompt, character.name);
 
   await Message.create({
     chatId,
@@ -98,7 +103,16 @@ router.post("/message", authMiddleware, async (req, res) => {
     text: aiReply,
   });
 
-  res.json({ reply: aiReply });
+  res.json({ 
+    reply: aiReply,
+    relationship: {
+      affection: relationship.affection,
+      trust: relationship.trust,
+      intimacy: relationship.intimacy,
+      anger: relationship.anger
+    },
+    emotion: character.emotion
+  });
 });
 
 router.get("/:chatId", authMiddleware, async (req, res) => {

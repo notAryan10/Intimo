@@ -28,6 +28,16 @@ router.get("/my", authMiddleware, async (req, res) => {
   res.json(characters);
 });
 
+router.get("/:id", authMiddleware, async (req, res) => {
+  try {
+    const character = await Character.findOne({ _id: req.params.id, userId: req.userId });
+    if (!character) return res.status(404).json({ error: "Character not found" });
+    res.json(character);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.delete("/:id", authMiddleware, async (req, res) => {
   await Character.deleteOne({ _id: req.params.id, userId: req.userId });
   res.json({ message: "Character deleted" });
