@@ -100,6 +100,48 @@ Only return JSON or NONE.
     return jsonify({"memory": result})
 
 
+@app.route("/generate-greeting", methods=["POST"])
+def generate_greeting():
+    data = request.json
+    character_name = data.get("character_name")
+    personality = data.get("personality")
+    emotion = data.get("emotion")
+    description = data.get("description")
+
+    prompt = f"""<|im_start|>system
+You are roleplaying as {character_name}.
+
+Character Description:
+{description}
+
+Personality:
+{personality}
+
+Current Emotion:
+{emotion}
+
+You are meeting the user for the first time.
+
+Write a natural first message to start a conversation.
+Include small actions like *smiles* or *looks at you*.
+
+Rules:
+- Stay in character
+- Be engaging
+- Ask a question
+- 2-3 sentences
+- Do NOT write your name
+- Do NOT write "User:"
+Only write the message.
+<|im_end|>
+<|im_start|>assistant
+"""
+    raw_reply = call_llama(prompt)
+    reply = clean_reply(raw_reply, character_name)
+
+    return jsonify({"greeting": reply})
+
+
 if __name__ == "__main__":
     app.run(port=8000)
 
