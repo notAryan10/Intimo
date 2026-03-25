@@ -1,31 +1,34 @@
 from flask import Flask, request, jsonify
-from transformers import pipeline
+import requests
+import re
 
 app = Flask(__name__)
 
-chatbot = pipeline(
-    "text-generation",
-    model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    max_new_tokens=200,
-    temperature=0.85,
-    top_p=0.92,
-    do_sample=True,
-    repetition_penalty=1.12
-)
+LLAMA_SERVER_URL = "http://localhost:8080/completion"
+
+def call_llama(prompt, stop=["<|im_end|>", "User:", "Assistant:"]):
+    payload = {
+        "prompt": prompt,
+        "n_predict": 150,
+        "temperature": 0.8,
+        "stop": stop,
+        "top_p": 0.95,
+        "repeat_penalty": 1.1,
+    }
+    try:
+        response = requests.post(LLAMA_SERVER_URL, json=payload)
+        response.raise_for_status()
+        return response.json().get("content", "").strip()
+    except Exception as e:
+        print(f"Llama-server error: {e}")
+        return "Error: AI engine is currently unavailable."
 
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.json
     prompt = data.get("prompt")
-    character_name = data.get("character_name", "AI")
-
-    result = chatbot(prompt)[0]["generated_text"]
-
-    reply = result.split(f"Now reply as {character_name}:")[-1].strip()
-
-    reply = reply.split("User:")[0].strip()
-    reply = reply.split("\nUser")[0].strip()
-
+    
+    reply = call_llama(prompt)
     return jsonify({"reply": reply})
 
 @app.route("/analyze", methods=["POST"])
@@ -33,53 +36,50 @@ def analyze():
     data = request.json
     message = data.get("message")
 
-    prompt = f"""
+    prompt = f"""<|im_start|>system
 Analyze the user's message and return JSON.
-
-Message: "{message}"
-
-Return in this format:
+Format:
 {{
-  "emotion": "",
-  "intent": "",
-  "affection": 0,
-  "trust": 0,
-  "intimacy": 0,
-  "anger": 0
+  "emotion": "string",
+  "intent": "string",
+  "affection": number (+/-),
+  "trust": number (+/-),
+  "intimacy": number (+/-),
+  "anger": number (+/-)
 }}
-
 Only return JSON.
+<|im_end|>
+<|im_start|>user
+{message}
+<|im_end|>
+<|im_start|>assistant
 """
-
-    result = chatbot(prompt)[0]["generated_text"]
-    json_text = result[len(prompt):].strip()
-
-    return jsonify({"analysis": json_text})
+    result = call_llama(prompt)
+    return jsonify({"analysis": result})
 
 @app.route("/extract-memory", methods=["POST"])
 def extract_memory():
     data = request.json
     message = data.get("message")
 
-    prompt = f"""
+    prompt = f"""<|im_start|>system
 Extract important long-term memory from this message.
-
-Message: "{message}"
-
 If nothing important, return: NONE
-
 If important, return JSON:
 {{
- "content": "",
+ "content": "the memory",
  "type": "personal | interest | emotional | event"
 }}
 Only return JSON or NONE.
+<|im_end|>
+<|im_start|>user
+{message}
+<|im_end|>
+<|im_start|>assistant
 """
-
-    result = chatbot(prompt)[0]["generated_text"]
-    reply = result[len(prompt):].strip()
-
-    return jsonify({"memory": reply})
+    result = call_llama(prompt)
+    return jsonify({"memory": result})
 
 if __name__ == "__main__":
     app.run(port=8000)
+

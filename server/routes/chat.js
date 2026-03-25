@@ -11,6 +11,7 @@ const { analyzeMessage } = require("../services/analyzerService");
 const { extractAndStoreMemory } = require("../services/memoryService");
 const { getLastMessages } = require("../memory/memoryManager");
 const { buildPrompt } = require("../prompt/promptBuilder");
+const { updateEmotion } = require("../services/emotionEngine");
 const Memory = require("../models/Memory");
 
 router.post("/create", authMiddleware, async (req, res) => {
@@ -61,6 +62,10 @@ router.post("/message", authMiddleware, async (req, res) => {
     }
   }
 
+  const dynamicEmotion = updateEmotion(relationship);
+  character.emotion = dynamicEmotion;
+  await character.save();
+
   await Message.create({
     chatId,
     sender: "user",
@@ -69,14 +74,30 @@ router.post("/message", authMiddleware, async (req, res) => {
 
   await extractAndStoreMemory(req.userId, character._id, message);
 
-  const memories = await Memory.find({
+  const allMemories = await Memory.find({
     userId: req.userId,
     characterId: character._id,
-  }).limit(5);
+  }).sort({ createdAt: -1 }).limit(20);
+
+  const keywords = message.toLowerCase().split(/\W+/).filter(w => w.length > 3);
+  const relevantMemories = allMemories.filter(mem => 
+    keywords.some(kw => mem.content.toLowerCase().includes(kw))
+  );
+  const types = ["personal", "interest", "emotional", "event"];
+  const selectedMemories = [];
+  
+  selectedMemories.push(...relevantMemories.slice(0, 3));
+  
+  types.forEach(type => {
+    if (selectedMemories.length < 6) {
+      const typeMem = allMemories.find(m => m.type === type && !selectedMemories.includes(m));
+      if (typeMem) selectedMemories.push(typeMem);
+    }
+  });
 
   let memoryText = "";
-  memories.forEach(mem => {
-    memoryText += `Memory: ${mem.content}\n`;
+  selectedMemories.forEach(mem => {
+    memoryText += `- ${mem.content} (${mem.type})\n`;
   });
 
   const messages = await getLastMessages(chatId);
