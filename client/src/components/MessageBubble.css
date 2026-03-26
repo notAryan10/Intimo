@@ -21,6 +21,39 @@
 .message-bubble.ai {
   margin-right: auto;
   background: hsl(210, 20%, 20%);
+  border-bottom: 2px solid hsl(210, 30%, 15%);
+}
+
+.narration {
+  font-style: italic;
+  display: block;
+  margin-bottom: 0.5rem;
+  color: hsl(210, 10%, 80%);
+  line-height: 1.6;
+}
+
+.message-bubble.user .narration {
+  color: hsl(200, 10%, 90%);
+}
+
+.action {
+  font-style: italic;
+  color: hsl(200, 40%, 75%);
+  margin: 0 0.1rem;
+}
+
+.message-bubble.user .action {
+  color: hsl(190, 30%, 85%);
+}
+
+.dialogue {
+  font-style: normal;
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #fff;
+  font-weight: 500;
+  font-size: 1.05rem;
+  line-height: 1.5;
 }
 
 .sender-label {

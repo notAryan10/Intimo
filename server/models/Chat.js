@@ -19,7 +19,20 @@ const ChatSchema = new mongoose.Schema({
   greetingGenerated: {
     type: Boolean,
     default: false
+  },
+  initialMessageGenerated: {
+    type: Boolean,
+    default: false
+  },
+  relationshipLevel: {
+    type: String,
+    default: "Stranger"
+  },
+  relationshipEmoji: {
+    type: String,
+    default: "👋"
   }
 });
+
 
 module.exports = mongoose.model("Chat", ChatSchema);

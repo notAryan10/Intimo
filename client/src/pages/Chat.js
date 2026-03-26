@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import API from "../services/api";
 import ChatBox from "../components/ChatBox";
 import RelationshipBar from "../components/RelationshipBar";
+import { saveChatData, loadChatData } from "../utils/localStorageHelper";
 import "./Chat.css";
 
 function Chat() {
@@ -24,22 +25,26 @@ function Chat() {
       const charRes = await API.get(`/character/${charId}`);
       setCharacter(charRes.data);
 
-      const chatRes = await API.post("/chat/create", {
+      const createRes = await API.post("/chat/create", {
         characterId: charId,
         mode: "romantic",
       });
       
-      const { chat, messages: history, relationship: relData, level, emoji } = chatRes.data;
-      
-      setChatId(chat._id);
-      setMessages(history || []);
+      const createdChatId = createRes.data.chatId;
+      setChatId(createdChatId);
 
-      if (relData) {
-        setRelationship(relData);
-      }
-      if (level) {
-        setRelationshipLevel({ level, emoji });
-      }
+      // Load chat (THIS generates intro)
+      const chatRes = await API.get(`/chat/${createdChatId}`);
+      const { messages: history, relationship: relData, level, emoji } = chatRes.data;
+      
+      // Load from localStorage if available, fallback to history from API
+      const storedMessages = loadChatData(createdChatId, "messages", history);
+      setMessages(storedMessages || []);
+
+      const storedRel = loadChatData(createdChatId, "relationship", relData);
+      if (storedRel) setRelationship(storedRel);
+
+      if (level) setRelationshipLevel({ level, emoji });
 
       setLoading(false);
     } catch (err) {
@@ -55,6 +60,20 @@ function Chat() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
+
+  // Persist messages to localStorage
+  useEffect(() => {
+    if (chatId && messages.length > 0) {
+      saveChatData(chatId, "messages", messages);
+    }
+  }, [messages, chatId]);
+
+  // Persist relationship to localStorage
+  useEffect(() => {
+    if (chatId) {
+      saveChatData(chatId, "relationship", relationship);
+    }
+  }, [relationship, chatId]);
 
   const regenerateLastMessage = async () => {
     if (!chatId) return;

@@ -1,35 +1,34 @@
-function formatMessage(text, characterName) {
-  if (!text) return "";
-  
-  let formatted = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+import React from 'react';
+import './MessageBubble.css';
+import { parseMessage } from '../utils/messageFormatter';
 
-  formatted = formatted.replace(/\*?actions:\s*/gi, "*");
+function FormattedMessage({ text, sender }) {
+  if (!text) return null;
 
-  let stars = (formatted.match(/\*/g) || []).length;
-  if (stars % 2 !== 0) formatted += "*";
+  const segments = parseMessage(text, sender);
 
-  formatted = formatted.replace(/\*(.*?)\*/g, "<i>$1</i>");
-
-  const nameToMatch = characterName ? `|${characterName}` : "";
-  const regex = new RegExp(`(^|\\.\\s+)(She|He|Her|His${nameToMatch})\\b([^.]*\\.)`, "g");
-  formatted = formatted.replace(regex, '$1<i>$2$3</i>');
-
-  return formatted;
+  return (
+    <div className="formatted-message">
+      {segments.map((segment, index) => {
+        const className = segment.type; 
+        return (
+          <span key={index} className={className}>
+            {segment.content}
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
-function MessageBubble({ sender, text, characterName }) {
+function MessageBubble({ sender, text }) {
   const isUser = sender === "user";
 
   return (
-    <div
-      style={{display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", margin: "10px 0"}}>
-      <div 
-        style={{background: isUser ? "#2b8cff" : "#2f2f2f", color: "white", padding: "10px 15px", borderRadius: "15px", maxWidth: "60%", }}
-        dangerouslySetInnerHTML={{ __html: formatMessage(text, characterName) }}
-      />
+    <div className={`message-container ${isUser ? 'user' : 'ai'}`}>
+      <div className={`message-bubble ${isUser ? 'user' : 'ai'}`}>
+        <FormattedMessage text={text} sender={sender} />
+      </div>
     </div>
   );
 }

@@ -25,13 +25,24 @@ Anger: ${relationship.anger}/100
 Relationship Level: ${relationshipLevel || "Stranger"}
 
 ### Roleplay Rules:
-- Speak as ${character.name}
-- You can include actions using * *
-- You can include thoughts and feelings
-- Stay in character
-- Do NOT speak for the user
-- Replies should be 3–5 sentences
-- Use a mix of actions and dialogue
+- Only write as ${character.name}.
+- Never write dialogue, thoughts, or actions for the User.
+- Never continue the story for the User.
+- Only respond as ${character.name}.
+- Replies should be 3-5 sentences.
+- Use this format:
+
+Narration in italic using * *
+Dialogue in "quotes"
+
+Example:
+*She looks at you and smiles softly.*
+"Hi... I'm glad you came."
+
+Do NOT write anything for the User.
+Do NOT describe User actions.
+Do NOT continue the scene as a narrator.
+Only respond as ${character.name}.
 - ${memoryText ? `Important memories:\n${memoryText}` : ""}
 
 ### Conversation:
@@ -39,8 +50,6 @@ ${history}
 <|im_start|>user
 ${userMessage}
 <|im_end|>
-
-### Reply as ${character.name}:
 <|im_start|>assistant
 `.trim();
 }

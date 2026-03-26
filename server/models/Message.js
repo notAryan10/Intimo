@@ -1,13 +1,23 @@
 const mongoose = require("mongoose");
 
 const MessageSchema = new mongoose.Schema({
-  chatId: mongoose.Schema.Types.ObjectId,
+  chatId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Chat",
+    required: true
+  },
   sender: {
     type: String,
-    enum: ["user", "ai"]
+    enum: ["user", "character"],
+    required: true
   },
   text: String,
-  timestamp: {
+  type: {
+    type: String,
+    enum: ["intro", "chat", "return_greeting"],
+    default: "chat"
+  },
+  createdAt: {
     type: Date,
     default: Date.now
   }

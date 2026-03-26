@@ -6,14 +6,14 @@ app = Flask(__name__)
 
 LLAMA_SERVER_URL = "http://localhost:8080/completion"
 
-def call_llama(prompt: str, stop: list[str] = ["<|im_end|>", "User:", "Assistant:"]) -> str:
+def call_llama(prompt: str, stop: list[str] = ["<|im_end|>", "User:", "You:", "\nUser:", "\nYou:", "Assistant:"]) -> str:
     payload = {
         "prompt": prompt,
-        "n_predict": 150,
-        "temperature": 0.8,
+        "n_predict": 180,
+        "temperature": 0.95,
         "stop": stop,
         "top_p": 0.95,
-        "repeat_penalty": 1.1,
+        "repeat_penalty": 1.15,
     }
     try:
         response = requests.post(LLAMA_SERVER_URL, json=payload)
@@ -31,8 +31,13 @@ def clean_reply(text: str, character_name: str) -> str:
     
     cleaned = cleaned.replace("<|im_end|>", "").replace("<|im_start|>", "")
     
+    cleaned = re.sub(r'([^\s*"])\s*(")', r'\1\n\n\2', cleaned)
+    cleaned = re.sub(r'(")\s*([^\s*"])', r'\1\n\n\2', cleaned)
+    
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    
     last_dot = cleaned.rfind(".")
-    if last_dot != -1:
+    if last_dot != -1 and '"' not in cleaned[last_dot:]:
         cleaned = cleaned[:last_dot + 1]
         
     return cleaned.strip()
@@ -101,16 +106,37 @@ Only return JSON or NONE.
 
 
 def clean_intro(text: str) -> str:
-    # Remove character name if model adds it (e.g. "Lily: ...")
     text = re.sub(r"^[A-Za-z\s]+:\s*", "", text)
 
-    # Remove meta phrases
     text = re.sub(r"(Detailed scene description:|Scene:|Narrator:|Opening Scene:|Scene Description:)", "", text, flags=re.IGNORECASE)
 
-    # Ensure dialogue has quotes if it's missing them
+    open_quotes = ['"', '“']
+    close_quotes = ['"', '”']
+    
+    first_open = -1
+    for q in open_quotes:
+        pos = text.find(q)
+        if pos != -1 and (first_open == -1 or pos < first_open):
+            first_open = pos
+            
+    if first_open != -1:
+        first_close = -1
+        for q in close_quotes:
+            pos = text.find(q, first_open + 1)
+            if pos != -1 and (first_close == -1 or pos < first_close):
+                first_close = pos
+        
+        if first_close != -1:
+            text = text[:first_close + 1]
+        else:
+            newline_pos = text.find('\n', first_open + 10)
+            if newline_pos != -1:
+                text = text[:newline_pos]
+
+    text = text.strip()
+    
     content_outside = re.sub(r"\*.*?\*", "", text).strip()
     if content_outside and '"' not in content_outside:
-        text = text.strip()
         if not text.endswith("*"):
             last_ast = text.rfind("*")
             if last_ast != -1:
@@ -139,23 +165,22 @@ Personality: {personality}
 Emotion: {emotion}
 Description: {description}
 
-Write the opening scene where the character meets the user for the first time.
+Write ONE opening scene where the character meets the user.
 
-WRITING STYLE RULES:
-- Write in third person (use the character's name, not "I")
-- Write like a novel scene
-- Include the character's actions, thoughts, and surroundings
-- Include dialogue spoken by the character
-- The user is present but mostly silent
-- Do NOT write meta text like "scene description" or "narrator"
-- Do NOT explain the story, just write it
-- Keep it 1–2 paragraphs
-- End with the character speaking to the user
+Rules:
+- Use this format: Narration in italic using * * and Dialogue in "quotes".
+- Write only ONE scene
+- Write only ONE interaction
+- End the scene immediately after the character speaks
+- Do NOT continue the story after the dialogue
+- Do NOT start a second scene
+- Do NOT add another paragraph after dialogue
+- Maximum 120 words
 
-STYLE EXAMPLE:
-Lily walked into the library, hugging a book close to her chest. She noticed a boy sitting alone by the window and hesitated for a moment before slowly walking over. Her heart was beating a little faster than usual, but she tried to smile anyway. "Um... hi. Is it okay if I sit here with you?"
+Example:
+*She walked into the library and noticed a boy sitting alone by the window. She hesitated for a moment before walking over, holding her book close to her chest.* "Um... hi. Is it okay if I sit here with you?"
 
-Now write the opening scene.
+Now write the scene and STOP after the dialogue.
 <|im_end|>
 <|im_start|>assistant
 """
@@ -191,6 +216,7 @@ Write a natural first message to start a conversation.
 Include small actions like *smiles* or *looks at you*.
 
 Rules:
+- Use this format: Narration in italic using * * and Dialogue in "quotes".
 - Stay in character
 - Be engaging
 - Ask a question
@@ -242,6 +268,7 @@ The user has come back to chat with you again.
 
 Write a natural message to greet them again.
 Rules:
+- Use this format: Narration in italic using * * and Dialogue in "quotes".
 - Act according to relationship level (Stranger: polite, Friend: casual, Crush: shy/blush, Lover: affectionate, Conflict: cold)
 - If morning, say good morning. If night, say good night.
 - Use *actions* (e.g. *smiles*, *looks at you*)
