@@ -5,6 +5,7 @@ const CharacterSchema = new mongoose.Schema({
   name: String,
   personality: String,
   emotion: String,
+  mood: { type: String, default: "Neutral" },
   description: String,
   visibility: {
     type: String,

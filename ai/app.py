@@ -101,8 +101,13 @@ Only return JSON or NONE.
 
 
 def clean_intro(text: str) -> str:
+    # Remove character name if model adds it (e.g. "Lily: ...")
     text = re.sub(r"^[A-Za-z\s]+:\s*", "", text)
 
+    # Remove meta phrases
+    text = re.sub(r"(Detailed scene description:|Scene:|Narrator:|Opening Scene:|Scene Description:)", "", text, flags=re.IGNORECASE)
+
+    # Ensure dialogue has quotes if it's missing them
     content_outside = re.sub(r"\*.*?\*", "", text).strip()
     if content_outside and '"' not in content_outside:
         text = text.strip()
@@ -126,38 +131,31 @@ def generate_intro_scene():
     description = data.get("description")
 
     prompt = f"""<|im_start|>system
-You are roleplaying as {character_name}.
+You are roleplaying as this character in a story.
 
-Description:
-{description}
+Character:
+Name: {character_name}
+Personality: {personality}
+Emotion: {emotion}
+Description: {description}
 
-Personality:
-{personality}
+Write the opening scene where the character meets the user for the first time.
 
-Current Mood:
-{emotion}
+WRITING STYLE RULES:
+- Write in third person (use the character's name, not "I")
+- Write like a novel scene
+- Include the character's actions, thoughts, and surroundings
+- Include dialogue spoken by the character
+- The user is present but mostly silent
+- Do NOT write meta text like "scene description" or "narrator"
+- Do NOT explain the story, just write it
+- Keep it 1–2 paragraphs
+- End with the character speaking to the user
 
-Write the opening scene where the user first meets you.
+STYLE EXAMPLE:
+Lily walked into the library, hugging a book close to her chest. She noticed a boy sitting alone by the window and hesitated for a moment before slowly walking over. Her heart was beating a little faster than usual, but she tried to smile anyway. "Um... hi. Is it okay if I sit here with you?"
 
-STRICT FORMAT:
-1. First write a scene description in *italics* between * *
-2. Then write dialogue in quotes "like this"
-3. Do NOT write the user's dialogue or thoughts
-4. Do NOT write the character name before dialogue
-5. Do NOT write a long story
-6. Maximum 2 short paragraphs
-
-Rules:
-- You are the character
-- The user is a silent protagonist
-- Scene description must be in * *
-- Dialogue must be in " "
-
-Example format:
-*She walks into the room and notices you sitting by the window.*
-"Hi... I don't think we've met before."
-
-Now write the scene.
+Now write the opening scene.
 <|im_end|>
 <|im_start|>assistant
 """

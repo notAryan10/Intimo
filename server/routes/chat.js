@@ -144,12 +144,10 @@ router.post("/message", authMiddleware, async (req, res) => {
     await character.save();
   }
 
-   // Update dynamic emotion
   const currentEmotion = updateEmotion(relationship);
   character.emotion = currentEmotion;
   await character.save();
 
-  // Relationship Events (Hardcoded thresholds)
   let specialEvent = null;
   const events = relationship.eventTriggered || new Map();
 
@@ -253,6 +251,75 @@ router.get("/:chatId", authMiddleware, async (req, res) => {
     level: levelInfo.level,
     emoji: levelInfo.emoji
   });
+});
+
+router.post("/regenerate/:chatId", authMiddleware, async (req, res) => {
+  try {
+    const chatId = req.params.chatId;
+    const userId = req.userId;
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) return res.status(404).json({ error: "Chat not found" });
+
+    const lastAI = await Message.findOne({ chatId, sender: "ai" }).sort({ timestamp: -1 });
+    if (lastAI) {
+      await Message.deleteOne({ _id: lastAI._id });
+    }
+
+    const lastUser = await Message.findOne({ chatId, sender: "user" }).sort({ timestamp: -1 });
+    if (!lastUser) return res.status(400).json({ error: "No user message to regenerate from" });
+
+    const character = await Character.findById(chat.characterId);
+    let relationship = await Relationship.findOne({ userId, characterId: character._id });
+    const currentLevelInfo = getRelationshipLevel(relationship);
+    const currentEmotion = updateEmotion(relationship);
+
+    const memories = await Memory.find({ userId, characterId: character._id })
+      .sort({ importance: -1, createdAt: -1 })
+      .limit(5);
+
+    let memoryText = "";
+    memories.forEach(mem => {
+      memoryText += `- ${mem.content} (Importance: ${mem.importance})\n`;
+    });
+
+    const messages = await getLastMessages(chatId);
+
+    const prompt = buildPrompt(
+      character,
+      relationship,
+      messages,
+      lastUser.text,
+      chat.chatMode,
+      memoryText,
+      currentEmotion,
+      currentLevelInfo.level
+    );
+
+    const aiReply = await getAIResponse(prompt, character.name);
+
+    await Message.create({
+      chatId,
+      sender: "ai",
+      text: aiReply,
+    });
+
+    res.json({
+      reply: aiReply,
+      relationship: {
+        affection: relationship.affection,
+        trust: relationship.trust,
+        intimacy: relationship.intimacy,
+        anger: relationship.anger
+      },
+      level: currentLevelInfo.level,
+      emoji: currentLevelInfo.emoji,
+      emotion: currentEmotion
+    });
+  } catch (err) {
+    console.error("Error in /regenerate:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

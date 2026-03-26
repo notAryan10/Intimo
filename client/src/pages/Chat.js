@@ -56,19 +56,53 @@ function Chat() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
+  const regenerateLastMessage = async () => {
+    if (!chatId) return;
+    
+    try {
+      setTyping(true);
+      
+      // Remove last AI message locally for better UX
+      setMessages(prev => {
+        if (prev.length > 0 && prev[prev.length - 1].sender === "ai") {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+
+      const res = await API.post(`/chat/regenerate/${chatId}`);
+      
+      setTyping(false);
+      
+      setMessages(prev => [
+        ...prev,
+        { sender: "ai", text: res.data.reply }
+      ]);
+
+      if (res.data.relationship) setRelationship(res.data.relationship);
+      if (res.data.level) setRelationshipLevel({ level: res.data.level, emoji: res.data.emoji });
+      if (res.data.emotion) setCharacter(prev => ({ ...prev, emotion: res.data.emotion }));
+      
+    } catch (err) {
+      setTyping(false);
+      console.error("Regeneration Error:", err);
+    }
+  };
+
   const sendMessage = async (isRegenerate = false) => {
-    const textToSend = isRegenerate 
-      ? messages.filter(m => m.sender === "user").slice(-1)[0]?.text 
-      : message;
+    if (isRegenerate) {
+      await regenerateLastMessage();
+      return;
+    }
+
+    const textToSend = message;
 
     if (!textToSend?.trim()) return;
 
     try {
-      if (!isRegenerate) {
-        const tempUserMsg = { sender: "user", text: textToSend };
-        setMessages((prev) => [...prev, tempUserMsg]);
-        setMessage("");
-      }
+      const tempUserMsg = { sender: "user", text: textToSend };
+      setMessages((prev) => [...prev, tempUserMsg]);
+      setMessage("");
 
       setTyping(true);
 
@@ -79,22 +113,11 @@ function Chat() {
 
       setTyping(false);
 
-      if (isRegenerate) {
-        setMessages((prev) => {
-          const newMsgs = [...prev];
-          if (newMsgs[newMsgs.length - 1].sender === "ai") {
-            newMsgs[newMsgs.length - 1].text = res.data.reply;
-          } else {
-            newMsgs.push({ sender: "ai", text: res.data.reply });
-          }
-          return newMsgs;
-        });
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { sender: "ai", text: res.data.reply },
-        ]);
-      }
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: res.data.reply },
+      ]);
+
       if (res.data.relationship) {
         setRelationship(res.data.relationship);
       }
