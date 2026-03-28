@@ -189,7 +189,7 @@ function Chat() {
           onRegenerate={() => sendMessage(true)}
           typing={typing}
           chatEndRef={chatEndRef}
-          characterName={character?.name}
+          character={character}
         />
       </div>
     </div>

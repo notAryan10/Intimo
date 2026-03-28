@@ -12,9 +12,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/auth", authRoutes);
-app.use("/character", characterRoutes);
-app.use("/chat", chatRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/character", characterRoutes);
+app.use("/api/chat", chatRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))

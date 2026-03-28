@@ -17,6 +17,7 @@ const MessageSchema = new mongoose.Schema({
     enum: ["intro", "chat", "return_greeting"],
     default: "chat"
   },
+  audioUrl: String,
   createdAt: {
     type: Date,
     default: Date.now

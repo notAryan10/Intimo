@@ -65,3 +65,34 @@
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.tts-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  opacity: 0.7;
+  margin-top: 8px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.tts-button:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.tts-button.speaking {
+  opacity: 1;
+  animation: pulse 1.5s infinite ease-in-out;
+  cursor: wait;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 0px var(--accent-color)); }
+  50% { transform: scale(1.2); filter: drop-shadow(0 0 5px var(--accent-color)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 0px var(--accent-color)); }
+}

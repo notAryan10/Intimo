@@ -3,7 +3,7 @@ import MessageBubble from './MessageBubble';
 import TypingBubble from './TypingBubble';
 import './ChatBox.css';
 
-function ChatBox({ messages, message, setMessage, onSend, onRegenerate, typing, chatEndRef, characterName }) {
+function ChatBox({ messages, message, setMessage, onSend, onRegenerate, typing, chatEndRef, character }) {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -18,7 +18,16 @@ function ChatBox({ messages, message, setMessage, onSend, onRegenerate, typing, 
     <div className="chatbox-container">
       <div className="chatbox-messages" id="chatbox-messages">
         {messages.map((msg, i) => (
-          <MessageBubble key={i} sender={msg.sender} text={msg.text} characterName={characterName} />
+          <MessageBubble 
+            key={i} 
+            sender={msg.sender} 
+            text={msg.text} 
+            messageId={msg._id}
+            characterName={character?.name} 
+            characterId={character?._id}
+            voiceSettings={character?.voice}
+            emotion={character?.emotion}
+          />
         ))}
 
         {typing && <TypingBubble />}

@@ -338,4 +338,59 @@ router.post("/regenerate/:chatId", authMiddleware, async (req, res) => {
   }
 });
 
+function extractDialogue(text) {
+  const match = text.match(/"(.*?)"/);
+  if (match) return match[1];
+  
+  return text.replace(/\*.*?\*/g, '').trim();
+}
+
+function getXTTSVoice(personality, gender) {
+  const p = (personality || "").toLowerCase();
+
+  if (gender === "female") {
+    if (p.includes("shy") || p.includes("soft")) return "Ana Florence";
+    if (p.includes("cute") || p.includes("playful") || p.includes("cheerful")) return "Alice";
+    if (p.includes("cold") || p.includes("serious") || p.includes("stoic")) return "Emma";
+    return "Ana Florence";
+  } else {
+    if (p.includes("dominant") || p.includes("confident") || p.includes("bold")) return "Daniel";
+    if (p.includes("serious") || p.includes("stoic") || p.includes("deep")) return "James";
+    return "Thomas";
+  }
+}
+
+router.post("/tts", authMiddleware, async (req, res) => {
+  try {
+    const { text, characterId } = req.body;
+    
+    // Find character to get gender/personality
+    const character = await Character.findById(characterId);
+    if (!character) {
+      return res.status(404).json({ error: "Character not found" });
+    }
+
+    const speaker = getXTTSVoice(character.personality, character.voice.gender || "female");
+    const dialogue = extractDialogue(text);
+
+    const response = await axios.post(
+      "http://127.0.0.1:8000/tts",
+      {
+        text: dialogue,
+        speaker,
+        gender: character.voice.gender || "female"
+      },
+      {
+        responseType: "stream",
+      }
+    );
+
+    res.set("Content-Type", "audio/wav");
+    response.data.pipe(res);
+  } catch (err) {
+    console.error("TTS Proxy Error:", err.message);
+    res.status(500).json({ error: "Voice synthesis failed" });
+  }
+});
+
 module.exports = router;
