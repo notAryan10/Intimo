@@ -1,2 +1,6 @@
 flask
 requests
+torch
+torchaudio
+soundfile
+TTS

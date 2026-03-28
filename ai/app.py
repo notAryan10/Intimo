@@ -1,8 +1,29 @@
-from flask import Flask, request, jsonify
-import requests
+import io
+import os
 import re
+import uuid
+import torch
+import soundfile as sf
+import requests
+from flask import Flask, request, jsonify, send_file, Response
+from TTS.api import TTS
 
 app = Flask(__name__)
+
+AUDIO_DIR = os.path.join(os.path.dirname(__file__), "audio")
+os.makedirs(AUDIO_DIR, exist_ok=True)
+
+device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+print(f"Using device: {device}")
+
+print("Loading Coqui XTTS v2 model...")
+try:
+    tts_model = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+    print("XTTS v2 loaded successfully.")
+except Exception as e:
+    print(f"Failed to load XTTS via GPU, falling back to CPU: {e}")
+    tts_model = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2")
+    print("XTTS v2 loaded successfully on CPU.")
 
 LLAMA_SERVER_URL = "http://localhost:8080/completion"
 
@@ -25,40 +46,30 @@ def call_llama(prompt: str, stop: list[str] = ["<|im_end|>", "User:", "You:", "\
 
 def clean_reply(text: str, character_name: str) -> str:
     text = re.sub(rf"^{character_name}:\s*", "", text, flags=re.IGNORECASE)
-    
     parts = re.split(r"\n(User|AI|Assistant|System):", text, flags=re.IGNORECASE)
     cleaned = str(parts[0])
-    
     cleaned = cleaned.replace("<|im_end|>", "").replace("<|im_start|>", "")
-    
     cleaned = re.sub(r'([^\s*"])\s*(")', r'\1\n\n\2', cleaned)
     cleaned = re.sub(r'(")\s*([^\s*"])', r'\1\n\n\2', cleaned)
-    
     cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
-    
     last_dot = cleaned.rfind(".")
     if last_dot != -1 and '"' not in cleaned[last_dot:]:
         cleaned = cleaned[:last_dot + 1]
-        
     return cleaned.strip()
-
 
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.json
     prompt = data.get("prompt")
     character_name = data.get("character_name", "Assistant")
-    
     raw_reply = call_llama(prompt)
     reply = clean_reply(raw_reply, character_name)
-    
     return jsonify({"reply": reply})
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
     data = request.json
     message = data.get("message")
-
     prompt = f"""<|im_start|>system
 Analyze the user's message and return JSON.
 Format:
@@ -84,7 +95,6 @@ Only return JSON.
 def extract_memory():
     data = request.json
     message = data.get("message")
-
     prompt = f"""<|im_start|>system
 Extract important long-term memory from this message.
 If nothing important, return: NONE
@@ -104,37 +114,31 @@ Only return JSON or NONE.
     result = call_llama(prompt)
     return jsonify({"memory": result})
 
-
 def clean_intro(text: str) -> str:
     text = re.sub(r"^[A-Za-z\s]+:\s*", "", text)
-
     text = re.sub(r"(Detailed scene description:|Scene:|Narrator:|Opening Scene:|Scene Description:)", "", text, flags=re.IGNORECASE)
-
     open_quotes = ['"', '“']
     close_quotes = ['"', '”']
-    
     first_open = -1
     for q in open_quotes:
         pos = text.find(q)
         if pos != -1 and (first_open == -1 or pos < first_open):
             first_open = pos
-            
+
     if first_open != -1:
         first_close = -1
         for q in close_quotes:
             pos = text.find(q, first_open + 1)
             if pos != -1 and (first_close == -1 or pos < first_close):
                 first_close = pos
-        
+
         if first_close != -1:
             text = text[:first_close + 1]
         else:
             newline_pos = text.find('\n', first_open + 10)
             if newline_pos != -1:
                 text = text[:newline_pos]
-
     text = text.strip()
-    
     content_outside = re.sub(r"\*.*?\*", "", text).strip()
     if content_outside and '"' not in content_outside:
         if not text.endswith("*"):
@@ -144,9 +148,7 @@ def clean_intro(text: str) -> str:
                 suffix = text[last_ast+1:].strip()
                 if suffix:
                     text = f'{prefix}\n"{suffix}"'
-
     return text.strip()
-
 
 @app.route("/generate-intro-scene", methods=["POST"])
 def generate_intro_scene():
@@ -155,7 +157,6 @@ def generate_intro_scene():
     personality = data.get("personality")
     emotion = data.get("emotion")
     description = data.get("description")
-
     prompt = f"""<|im_start|>system
 You are roleplaying as this character in a story.
 
@@ -186,9 +187,7 @@ Now write the scene and STOP after the dialogue.
 """
     raw_reply = call_llama(prompt)
     reply = clean_intro(raw_reply)
-
     return jsonify({"intro": reply})
-
 
 @app.route("/generate-greeting", methods=["POST"])
 def generate_greeting():
@@ -197,7 +196,6 @@ def generate_greeting():
     personality = data.get("personality")
     emotion = data.get("emotion")
     description = data.get("description")
-
     prompt = f"""<|im_start|>system
 You are roleplaying as {character_name}.
 
@@ -229,9 +227,7 @@ Only write the message.
 """
     raw_reply = call_llama(prompt)
     reply = clean_reply(raw_reply, character_name)
-
     return jsonify({"greeting": reply})
-
 
 @app.route("/generate-return-greeting", methods=["POST"])
 def generate_return_greeting():
@@ -241,9 +237,7 @@ def generate_return_greeting():
     emotion = data.get("emotion")
     relationship_level = data.get("relationship_level")
     memory = data.get("memory")
-    time_of_day = data.get("time_of_day", "day")
     hours_away = data.get("hours_away", 0)
-
     time_context = ""
     if hours_away > 24:
         time_context = "The user has been away for a long time (over a day)."
@@ -251,14 +245,12 @@ def generate_return_greeting():
         time_context = f"The user has been away for {int(hours_away)} hours."
     else:
         time_context = "The user was away for a short time."
-
     prompt = f"""<|im_start|>system
 You are roleplaying as {character_name}.
 
 Personality: {personality}
 Current Emotion: {emotion}
 Relationship Level: {relationship_level}
-Time of Day: {time_of_day}
 {time_context}
 
 Important memories about the user:
@@ -269,23 +261,58 @@ The user has come back to chat with you again.
 Write a natural message to greet them again.
 Rules:
 - Use this format: Narration in italic using * * and Dialogue in "quotes".
-- Act according to relationship level (Stranger: polite, Friend: casual, Crush: shy/blush, Lover: affectionate, Conflict: cold)
-- If morning, say good morning. If night, say good night.
-- Use *actions* (e.g. *smiles*, *looks at you*)
-- Ask how they are or refer to the time they were away
+- Act according to relationship level
+- Use *actions* (e.g. *smiles*)
 - 2-3 sentences max
-- Do NOT write your name
-- Do NOT write "User:"
-Only write the message.
+- Only write the message.
 <|im_end|>
 <|im_start|>assistant
 """
     raw_reply = call_llama(prompt)
     reply = clean_reply(raw_reply, character_name)
-
     return jsonify({"greeting": reply})
 
+def clean_tts_text(text):
+    text = re.sub(r'\*.*?\*', '', text)
+    text = re.sub(r'[_]', '', text)
+    text = text.replace('"', '')
+    text = re.sub(r'\n+', ' ', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
+@app.route("/tts", methods=["POST"])
+def tts():
+    try:
+        data = request.json
+        raw_text = data.get("text")
+        gender = data.get("gender", "female")
+        speaker = data.get("speaker", "Ana Florence")
+        
+        if not raw_text:
+            return jsonify({"error": "No text provided"}), 400
+            
+        text = clean_tts_text(raw_text)
+        if not text:
+            text = raw_text
+
+        def generate():
+            chunks = tts_model.tts_stream(text=text, speaker=speaker, language="en")
+            for chunk in chunks:
+                if hasattr(chunk, "cpu"):
+                    chunk = chunk.cpu().numpy()
+                yield chunk.tobytes()
+
+        return Response(generate(), mimetype="audio/wav")
+    except Exception as e:
+        print(f"XTTS Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/audio/<filename>")
+def get_audio(filename):
+    filepath = os.path.join(AUDIO_DIR, filename)
+    if os.path.exists(filepath):
+        return send_file(filepath)
+    return jsonify({"error": "File not found"}), 404
 
 if __name__ == "__main__":
     app.run(port=8000)
-
